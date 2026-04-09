@@ -52,33 +52,38 @@ export default function CheckoutPage() {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const handlePlaceOrder = async () => {
-    if (cart.length === 0) return alert("Cart is empty");
+  if (cart.length === 0) return alert("Cart is empty");
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const products = cart.map((item) => ({
-        product: item._id,
-        quantity: item.quantity,
-      }));
+  try {
+    // ✅ Include vendor and price for backend validation
+    const products = cart.map((item) => ({
+      product: item._id,
+      vendor: item.vendor, // make sure cart items have vendor
+      price: item.price,   // include price
+      quantity: item.quantity,
+    }));
 
-      const res = await API.post("/orders", { products });
+    const totalPrice = products.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-      if (res.data.success) {
-        localStorage.removeItem("cart");
-        window.dispatchEvent(new Event("cartUpdated"));
-        setCart([]);
-        setSuccess("Order placed successfully ✅");
-      } else {
-        alert("Order failed ❌");
-      }
-    } catch (err) {
-      console.error(err);
+    const res = await API.post("/orders", { products, totalPrice });
+
+    if (res.data.success) {
+      localStorage.removeItem("cart");
+      window.dispatchEvent(new Event("cartUpdated"));
+      setCart([]);
+      setSuccess("Order placed successfully ✅");
+    } else {
       alert("Order failed ❌");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("Order failed ❌");
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (success) {
     return (

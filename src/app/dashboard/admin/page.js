@@ -23,6 +23,10 @@ export default function AdminDashboard() {
   const [vendors, setVendors] = useState([]);
   const [loadingVendors, setLoadingVendors] = useState(true);
 
+  // --- Orders ---
+  const [orders, setOrders] = useState([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+
   // --- Dashboard analytics ---
   const [analytics, setAnalytics] = useState({
     totalSales: 0,
@@ -31,9 +35,15 @@ export default function AdminDashboard() {
   });
 
   // --- Token & Axios Config ---
-  const getToken = () => (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+  const getToken = () =>
+    typeof window !== "undefined"
+      ? localStorage.getItem("token")
+      : null;
+
   const getConfig = () => ({
-    headers: { Authorization: getToken() ? `Bearer ${getToken()}` : "" },
+    headers: {
+      Authorization: getToken() ? `Bearer ${getToken()}` : "",
+    },
   });
 
   // --- Fetch all data ---
@@ -77,11 +87,22 @@ export default function AdminDashboard() {
     }
   };
 
+  const fetchOrders = async () => {
+    setLoadingOrders(true);
+    try {
+      const res = await API.get("/orders", getConfig());
+      setOrders(res.data.orders || []);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load orders ❌");
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
   const fetchAnalytics = async () => {
     try {
-      // You can fetch real analytics from backend
-      // const res = await API.get("/analytics", getConfig());
-      // setAnalytics(res.data);
+      // optional analytics fetch
     } catch (err) {
       console.error(err);
     }
@@ -91,6 +112,7 @@ export default function AdminDashboard() {
     fetchProducts();
     fetchCategories();
     fetchVendors();
+    fetchOrders(); // Add orders fetch
     fetchAnalytics();
   }, []);
 
@@ -125,6 +147,37 @@ export default function AdminDashboard() {
     }
   };
 
+  // --- Vendor Approval ---
+  const updateVendorStatus = async (id, status) => {
+    try {
+      await API.put(`/vendors/${id}`, { status }, getConfig());
+      fetchVendors();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update vendor ❌");
+    }
+  };
+
+  // --- Update order status ---
+  const updateOrderStatus = async (orderId, productId, status) => {
+    try {
+      await API.put(
+        `/admin/orders/${orderId}/product/${productId}`,
+        { status },
+        getConfig()
+      );
+      alert("Status updated ✅");
+      fetchOrders();
+    } catch (err) {
+      console.error(err);
+      if (err.response && err.response.status === 403) {
+        alert("You don't have permission ❌");
+      } else {
+        alert("Status update failed ❌");
+      }
+    }
+  };
+
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">Admin Dashboard 🛠️</h1>
@@ -149,7 +202,6 @@ export default function AdminDashboard() {
       <div className="bg-white p-4 rounded shadow mb-6">
         <h2 className="font-semibold mb-2">Manage Categories</h2>
 
-        {/* Add Category */}
         <div className="flex mb-3">
           <input
             type="text"
@@ -158,12 +210,14 @@ export default function AdminDashboard() {
             onChange={(e) => setNewCategory(e.target.value)}
             className="border p-2 rounded mr-2 flex-1"
           />
-          <button onClick={addCategory} className="bg-green-500 text-white px-3 py-1 rounded">
+          <button
+            onClick={addCategory}
+            className="bg-green-500 text-white px-3 py-1 rounded"
+          >
             Add Category
           </button>
         </div>
 
-        {/* Add Subcategory */}
         <div className="flex items-center mb-3">
           <select
             value={selectedCategory}
@@ -177,6 +231,7 @@ export default function AdminDashboard() {
               </option>
             ))}
           </select>
+
           <input
             type="text"
             placeholder="New Subcategory"
@@ -184,40 +239,19 @@ export default function AdminDashboard() {
             onChange={(e) => setNewSubCategory(e.target.value)}
             className="border p-2 rounded mr-2 flex-1"
           />
-          <button onClick={addSubCategory} className="bg-blue-500 text-white px-3 py-1 rounded">
+          <button
+            onClick={addSubCategory}
+            className="bg-blue-500 text-white px-3 py-1 rounded"
+          >
             Add Subcategory
           </button>
-        </div>
-
-        {/* Show categories & subcategories */}
-        <div>
-          <h3 className="font-semibold mb-2">Categories & Subcategories</h3>
-          {loadingCategories ? (
-            <p>Loading categories...</p>
-          ) : categories.length === 0 ? (
-            <p>No categories found</p>
-          ) : (
-            <ul>
-              {categories.map((cat) => (
-                <li key={cat._id} className="mb-2">
-                  <strong>{cat.name}</strong>
-                  {subCategories
-                    .filter((sub) => sub.categoryId === cat._id)
-                    .map((sub) => (
-                      <ul key={sub._id} className="ml-4 list-disc">
-                        <li>{sub.name}</li>
-                      </ul>
-                    ))}
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
 
       {/* --- Vendor Management --- */}
       <div className="bg-white p-4 rounded shadow mb-6">
         <h2 className="font-semibold mb-2">Vendors</h2>
+
         {loadingVendors ? (
           <p>Loading vendors...</p>
         ) : vendors.length === 0 ? (
@@ -225,9 +259,45 @@ export default function AdminDashboard() {
         ) : (
           <ul>
             {vendors.map((v) => (
-              <li key={v._id} className="border-b py-2 flex justify-between">
-                <span>{v.storeName}</span>
-                <span>{v.status}</span>
+              <li
+                key={v._id}
+                className="border-b py-3 flex justify-between items-center"
+              >
+                <div>
+                  <p className="font-semibold">{v.storeName}</p>
+                  <p className="text-sm text-gray-500">{v.owner?.email}</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-1 rounded text-white text-sm ${
+                      v.status === "approved"
+                        ? "bg-green-500"
+                        : v.status === "rejected"
+                        ? "bg-red-500"
+                        : "bg-yellow-500"
+                    }`}
+                  >
+                    {v.status}
+                  </span>
+
+                  {v.status === "pending" && (
+                    <>
+                      <button
+                        onClick={() => updateVendorStatus(v._id, "approved")}
+                        className="bg-green-600 text-white px-3 py-1 rounded"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => updateVendorStatus(v._id, "rejected")}
+                        className="bg-red-600 text-white px-3 py-1 rounded"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -239,11 +309,12 @@ export default function AdminDashboard() {
         <h2 className="text-xl font-semibold">Products</h2>
         <button
           onClick={() => router.push("/dashboard/admin/add-product")}
-          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+          className="bg-green-500 text-white px-4 py-2 rounded"
         >
           + Add Product
         </button>
       </div>
+
       {loadingProducts ? (
         <p>Loading products...</p>
       ) : products.length === 0 ? (
@@ -251,7 +322,7 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((p) => (
-            <div key={p._id} className="bg-white p-4 rounded shadow hover:shadow-md transition">
+            <div key={p._id} className="bg-white p-4 rounded shadow">
               {p.image && (
                 <img
                   src={p.image}
@@ -265,6 +336,65 @@ export default function AdminDashboard() {
           ))}
         </div>
       )}
+
+      {/* --- Orders Management --- */}
+      <div className="bg-white p-4 rounded shadow mt-6">
+        <h2 className="font-semibold mb-2">Orders</h2>
+        {loadingOrders ? (
+          <p>Loading orders...</p>
+        ) : orders.length === 0 ? (
+          <p>No orders yet</p>
+        ) : (
+          <div className="grid gap-4">
+            {orders.map((order) => (
+              <div
+                key={order._id}
+                className="bg-gray-50 p-4 rounded shadow"
+              >
+                <p>
+                  <strong>Order ID:</strong> {order._id}
+                </p>
+                <p>
+                  <strong>Total:</strong> ৳ {order.totalPrice}
+                </p>
+
+                <ul className="list-disc list-inside mt-2">
+                  {order.products.map((p) => {
+                    const status = p.status || "Pending";
+                    return (
+                      <li
+                        key={p._id}
+                        className="flex items-center gap-2"
+                      >
+                        <span>
+                          {p.product?.name || "Unknown Product"} x{" "}
+                          {p.quantity}
+                        </span>
+
+                        <select
+                          value={status}
+                          onChange={(e) =>
+                            updateOrderStatus(
+                              order._id,
+                              p._id,
+                              e.target.value
+                            )
+                          }
+                          className="ml-2 border p-1 rounded"
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Shipped">Shipped</option>
+                          <option value="Delivered">Delivered</option>
+                        </select>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

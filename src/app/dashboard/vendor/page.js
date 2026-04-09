@@ -9,17 +9,14 @@ export default function VendorDashboard() {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // 🔥 Category states (NEW)
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
 
-  // Form states
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [subCategoryId, setSubCategoryId] = useState("");
-
   const [editingId, setEditingId] = useState(null);
 
   const [vendorInfo, setVendorInfo] = useState(null);
@@ -35,7 +32,7 @@ export default function VendorDashboard() {
 
   const getVendorId = () => vendorInfo?.id;
 
-  // 🔥 Load categories
+  // Load categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -49,7 +46,6 @@ export default function VendorDashboard() {
     fetchCategories();
   }, []);
 
-  // 🔥 Filter subcategories
   const filteredSubCategories = subCategories.filter(
     (sub) => sub.categoryId === categoryId
   );
@@ -75,13 +71,13 @@ export default function VendorDashboard() {
       const res = await API.get("/orders/vendor-orders");
       const vendorId = getVendorId();
 
+      // Mark which product belongs to this vendor
       const ordersWithProducts = res.data.orders.map((order) => ({
         ...order,
         products: order.products.map((p) => ({
           ...p,
           isOwnProduct:
-            p.product?.vendor?._id === vendorId ||
-            p.product?.vendor === vendorId,
+            p.vendor?._id === vendorId || p.vendor === vendorId,
         })),
       }));
 
@@ -101,7 +97,7 @@ export default function VendorDashboard() {
     }
   }, [vendorInfo]);
 
-  // ✅ Add / Update Product
+  // Add / Update Product
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -142,7 +138,6 @@ export default function VendorDashboard() {
     }
   };
 
-  // ✅ Edit
   const editProduct = (p) => {
     setEditingId(p._id);
     setName(p.name);
@@ -153,8 +148,7 @@ export default function VendorDashboard() {
   };
 
   const deleteProduct = async (id) => {
-    const confirmDelete = confirm("Are you sure?");
-    if (!confirmDelete) return;
+    if (!confirm("Are you sure?")) return;
 
     try {
       await API.delete(`/products/${id}`);
@@ -166,10 +160,11 @@ export default function VendorDashboard() {
     }
   };
 
-  // Update order status
+  // Update order status (only own product)
   const updateOrderStatus = async (orderId, productId, status) => {
     try {
-      await API.put(`/orders/${orderId}/product/${productId}`, { status });
+      const vendorId = getVendorId();
+      await API.put(`/orders/${orderId}/product/${productId}`, { status, vendorId });
       alert("Status updated ✅");
       fetchOrders();
     } catch (err) {
@@ -212,7 +207,6 @@ export default function VendorDashboard() {
           className="border p-2 mb-2 w-full rounded"
         />
 
-        {/* 🔥 Category */}
         <select
           value={categoryId}
           onChange={(e) => {
@@ -229,7 +223,6 @@ export default function VendorDashboard() {
           ))}
         </select>
 
-        {/* 🔥 Subcategory */}
         <select
           value={subCategoryId}
           onChange={(e) => setSubCategoryId(e.target.value)}
@@ -322,14 +315,14 @@ export default function VendorDashboard() {
                 {order.products.map((p) => {
                   const status = p.status || "Pending";
                   return (
-                    <li key={p._id}>
-                      {p.product?.name} x {p.quantity}
+                    <li key={p._id} className="flex items-center gap-2">
+                      <span>{p.product?.name || "Unknown Product"} x {p.quantity}</span>
 
                       {p.isOwnProduct ? (
                         <select
                           value={status}
                           onChange={(e) =>
-                            updateOrderStatus(order._id, p.product._id, e.target.value)
+                            updateOrderStatus(order._id, p._id, e.target.value)
                           }
                           className="ml-2 border p-1"
                         >
