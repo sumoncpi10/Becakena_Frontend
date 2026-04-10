@@ -1,23 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import API from "../services/api";
 
 export default function Sidebar() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeCat, setActiveCat] = useState(null);
+  const [activeCat, setActiveCat] = useState(
+    searchParams.get("category") || null
+  );
 
-  // Fetch categories + subcategories
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await API.get("/categories"); // your API
+        const res = await API.get("/categories");
         setCategories(res.data.categories || []);
         setSubCategories(res.data.subCategories || []);
       } catch (err) {
-        console.error("Load failed ❌", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -26,24 +31,32 @@ export default function Sidebar() {
     fetchData();
   }, []);
 
-  // Toggle category
-  const toggleCategory = (id) => {
-    setActiveCat(activeCat === id ? null : id);
+  const toggleCategory = (catId) => {
+    const isSame = activeCat === catId;
+
+    const newCat = isSame ? "" : catId;
+
+    setActiveCat(isSame ? null : catId);
+
+    // reset subcategory when category changes
+    router.push(newCat ? `/products?category=${newCat}` : `/products`);
   };
 
-  // Get subcategories by categoryId
+  const handleSubClick = (catId, subId) => {
+    setActiveCat(catId);
+    router.push(`/products?category=${catId}&sub=${subId}`);
+  };
+
   const getSubCategories = (catId) => {
     return subCategories.filter((sub) => sub.categoryId === catId);
   };
 
   return (
-    <aside className="hidden md:block w-64 bg-gray-100 p-4 rounded shadow">
+    <aside className="w-64 bg-gray-100 p-4 rounded shadow">
       <h2 className="text-lg font-semibold mb-3">Categories</h2>
 
       {loading ? (
         <p>Loading...</p>
-      ) : categories.length === 0 ? (
-        <p className="text-gray-500">No categories found</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {categories.map((cat) => {
@@ -67,6 +80,7 @@ export default function Sidebar() {
                       subs.map((sub) => (
                         <li
                           key={sub._id}
+                          onClick={() => handleSubClick(cat._id, sub._id)}
                           className="cursor-pointer p-2 rounded hover:bg-orange-400 hover:text-white text-sm"
                         >
                           {sub.name}

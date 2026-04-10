@@ -4,10 +4,26 @@ import { useEffect, useState } from "react";
 import API from "../services/api";
 import ProductCard from "../components/ProductCard";
 import Sidebar from "../components/Sidebar";
+import FlashSale from "../components/FlashSale";
 
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const [showAllFlash, setShowAllFlash] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
+
+  const [categories] = useState([
+    "Home",
+    "Fashion",
+    "Beauty",
+    "Electronics",
+    "SmartPhone",
+    "Books",
+    "Toys",
+    "Sports",
+    "Grocery",
+  ]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -15,7 +31,7 @@ export default function Home() {
         const res = await API.get("/products");
         setProducts(res.data?.products || []);
       } catch (err) {
-        console.error("❌ Error fetching products:", err.message);
+        console.error(err.message);
       } finally {
         setLoading(false);
       }
@@ -24,50 +40,95 @@ export default function Home() {
     fetchProducts();
   }, []);
 
+  // ✅ CATEGORY FILTER (FIXED SAFE)
+  const filteredProducts = selectedCategory
+    ? products.filter(
+        (p) =>
+          (p.category?.name || "").toLowerCase() ===
+          selectedCategory.toLowerCase()
+      )
+    : products;
+
+  // 🔥 FLASH SALE = FIRST 6 PRODUCTS (SAFE)
+  const flashSaleProducts = filteredProducts.slice(0, 6);
+
+  const visibleFlashProducts = showAllFlash
+    ? flashSaleProducts
+    : flashSaleProducts.slice(0, 6);
+
+  // 🛍 JUST FOR YOU
+  const justForYouProducts = filteredProducts.slice(6);
+
   return (
-    <div className="flex flex-col md:flex-row gap-4 p-4">
+    <div className="bg-gray-50 min-h-screen">
 
-      {/* Sidebar */}
-      <aside className="hidden md:block md:w-64 bg-gray-100 p-4 rounded">
-        <Sidebar />
-      </aside>
+      <div className="flex flex-col md:flex-row gap-4 p-4">
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col gap-4">
+        {/* Sidebar */}
+        <aside className="hidden md:block md:w-64 bg-white p-4 rounded shadow">
+          <Sidebar />
+        </aside>
 
-        {/* Hero Banner */}
-        <div className="w-full">
-          <img
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNrM1b9TH2fYm4jD3XdEnw2axewYjuXXB1KP-NN1CYWGx5JDK9gRYqeyHBpGn1Smr5XXrFen0GckfRKLD7j7vhgvr9LC3wGbKc5JD_Pg&s=10"
-            alt="Hero Banner"
-            className="w-full h-40 md:h-64 lg:h-80 object-cover rounded"
+        {/* Main */}
+        <main className="flex-1 flex flex-col gap-6">
+
+          {/* HERO */}
+          <div className="rounded overflow-hidden shadow">
+            <img
+              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNrM1b9TH2fYm4jD3XdEnw2axewYjuXXB1KP-NN1CYWGx5JDK9gRYqeyHBpGn1Smr5XXrFen0GckfRKLD7j7vhgvr9LC3wGbKc5JD_Pg&s=10"
+              className="w-full h-40 md:h-72 object-cover"
+            />
+          </div>
+
+          {/* CATEGORIES */}
+          <div className="bg-white p-3 rounded shadow">
+            <h2 className="font-bold mb-2">Categories</h2>
+
+            <div className="flex gap-3 overflow-x-auto">
+              {categories.map((c, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setSelectedCategory(
+                      selectedCategory === c ? "" : c
+                    );
+                    setShowAllFlash(false);
+                  }}
+                  className={`px-4 py-2 rounded-full ${
+                    selectedCategory === c
+                      ? "bg-orange-500 text-white"
+                      : "bg-gray-100"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 🔥 FLASH SALE */}
+          <FlashSale
+            products={visibleFlashProducts}
+            onShowAll={() => setShowAllFlash(true)}
           />
-        </div>
 
-        {/* Flash Sale Section */}
-        <div className="bg-orange-400 text-white p-6 text-center text-xl md:text-2xl font-bold rounded">
-          Flash Sale 🔥 Up to 50% OFF
-        </div>
+          {/* 🛍 JUST FOR YOU */}
+          <div className="bg-white p-4 rounded shadow">
+            <h2 className="text-xl font-bold mb-3">Just For You</h2>
 
-        {/* Loading */}
-        {loading ? (
-          <div className="text-center text-lg font-semibold">
-            Loading products...
+            {loading ? (
+              <div>Loading...</div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {justForYouProducts.map((p) => (
+                  <ProductCard key={p._id} product={p} />
+                ))}
+              </div>
+            )}
           </div>
-        ) : products.length === 0 ? (
-          <div className="text-center text-gray-500">
-            No products found
-          </div>
-        ) : (
-          /* Product Grid */
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {products.map((p) => (
-              <ProductCard key={p._id} product={p} />
-            ))}
-          </div>
-        )}
 
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

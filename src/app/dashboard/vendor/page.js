@@ -46,17 +46,20 @@ export default function VendorDashboard() {
     fetchCategories();
   }, []);
 
+  // ✅ FIX: safe compare
   const filteredSubCategories = subCategories.filter(
-    (sub) => sub.categoryId === categoryId
+    (sub) => sub.categoryId?.toString() === categoryId
   );
 
   const fetchProducts = async () => {
     try {
       const res = await API.get("/products");
       const vendorId = getVendorId();
+
       const myProducts = res.data.products.filter(
-        (p) => p.vendor._id === vendorId
+        (p) => p.vendor?._id === vendorId
       );
+
       setProducts(myProducts);
     } catch (err) {
       console.error(err);
@@ -71,13 +74,12 @@ export default function VendorDashboard() {
       const res = await API.get("/orders/vendor-orders");
       const vendorId = getVendorId();
 
-      // Mark which product belongs to this vendor
       const ordersWithProducts = res.data.orders.map((order) => ({
         ...order,
         products: order.products.map((p) => ({
           ...p,
           isOwnProduct:
-            p.vendor?._id === vendorId || p.vendor === vendorId,
+            p.vendor === vendorId || p.vendor?._id === vendorId,
         })),
       }));
 
@@ -97,12 +99,12 @@ export default function VendorDashboard() {
     }
   }, [vendorInfo]);
 
-  // Add / Update Product
+  // ✅ FIXED handleSubmit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!name || !price || !categoryId) {
-      alert("Name, Price, Category required");
+    if (!name || !price || !categoryId || !subCategoryId) {
+      alert("Name, Price, Category & SubCategory required");
       return;
     }
 
@@ -111,8 +113,8 @@ export default function VendorDashboard() {
         name,
         price,
         image,
-        categoryId,
-        subCategoryId,
+        category: categoryId,       // ✅ FIX
+        subCategory: subCategoryId, // ✅ FIX
       };
 
       if (editingId) {
@@ -134,17 +136,18 @@ export default function VendorDashboard() {
       fetchProducts();
     } catch (err) {
       console.error(err);
-      alert("Operation failed ❌");
+      alert(err?.response?.data?.error || "Operation failed ❌");
     }
   };
 
+  // ✅ FIX edit
   const editProduct = (p) => {
     setEditingId(p._id);
     setName(p.name);
     setPrice(p.price);
     setImage(p.image || "");
-    setCategoryId(p.categoryId || "");
-    setSubCategoryId(p.subCategoryId || "");
+    setCategoryId(p.category?._id || "");
+    setSubCategoryId(p.subCategory?._id || "");
   };
 
   const deleteProduct = async (id) => {
@@ -160,11 +163,9 @@ export default function VendorDashboard() {
     }
   };
 
-  // Update order status (only own product)
   const updateOrderStatus = async (orderId, productId, status) => {
     try {
-      const vendorId = getVendorId();
-      await API.put(`/orders/${orderId}/product/${productId}`, { status, vendorId });
+      await API.put(`/orders/${orderId}/product/${productId}`, { status });
       alert("Status updated ✅");
       fetchOrders();
     } catch (err) {
@@ -237,29 +238,12 @@ export default function VendorDashboard() {
           ))}
         </select>
 
-        <button className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600">
+        <button className="bg-orange-500 text-white px-4 py-2 rounded">
           {editingId ? "Update Product" : "Add Product"}
         </button>
-
-        {editingId && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingId(null);
-              setName("");
-              setPrice("");
-              setImage("");
-              setCategoryId("");
-              setSubCategoryId("");
-            }}
-            className="ml-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
-          >
-            Cancel
-          </button>
-        )}
       </form>
 
-      {/* PRODUCTS */}
+       {/* PRODUCTS */}
       <h2 className="text-xl font-bold mb-2">My Products</h2>
       {loadingProducts ? (
         <p>Loading products...</p>
@@ -302,41 +286,35 @@ export default function VendorDashboard() {
       <h2 className="text-xl font-bold mb-2">Orders</h2>
       {loadingOrders ? (
         <p>Loading orders...</p>
-      ) : orders.length === 0 ? (
-        <p>No orders yet</p>
       ) : (
         <div className="grid gap-4">
           {orders.map((order) => (
             <div key={order._id} className="bg-white p-4 rounded shadow">
               <p><strong>Order ID:</strong> {order._id}</p>
-              <p><strong>Total:</strong> ৳ {order.totalPrice}</p>
 
-              <ul className="list-disc list-inside mt-2">
-                {order.products.map((p) => {
-                  const status = p.status || "Pending";
-                  return (
-                    <li key={p._id} className="flex items-center gap-2">
-                      <span>{p.product?.name || "Unknown Product"} x {p.quantity}</span>
+              {order.products.map((p) => (
+                <div key={p._id} className="flex items-center gap-2">
+                  {p.product?.name || "Unknown"} x {p.quantity}
 
-                      {p.isOwnProduct ? (
-                        <select
-                          value={status}
-                          onChange={(e) =>
-                            updateOrderStatus(order._id, p._id, e.target.value)
-                          }
-                          className="ml-2 border p-1"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Shipped">Shipped</option>
-                          <option value="Delivered">Delivered</option>
-                        </select>
-                      ) : (
-                        <span className="ml-2 text-gray-500">({status})</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                  {p.isOwnProduct ? (
+                    <select
+                      value={p.status || "Pending"}
+                      onChange={(e) =>
+                        updateOrderStatus(order._id, p._id, e.target.value)
+                      }
+                      className="border p-1 ml-2"
+                    >
+                      <option>Pending</option>
+                      <option>Shipped</option>
+                      <option>Delivered</option>
+                    </select>
+                  ) : (
+                    <span className="text-gray-500 ml-2">
+                      ({p.status || "Pending"})
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>
