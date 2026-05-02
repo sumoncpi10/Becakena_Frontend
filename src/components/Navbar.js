@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Navbar() {
   const router = useRouter();
@@ -96,12 +97,19 @@ export default function Navbar() {
   return (
     <>
       <nav className="flex flex-col md:flex-row items-center justify-between p-4 bg-orange-500 text-white shadow-md">
-        <h1
-          className="text-2xl font-bold mb-2 md:mb-0 cursor-pointer"
+        <div
+          className="cursor-pointer mb-2 md:mb-0"
           onClick={() => router.push("/")}
         >
-          BecaKena
-        </h1>
+          <Image
+            src="/hd_restoration_result_image.png"
+            alt="BecaKena Logo"
+            width={180}
+            height={40}
+            className="object-contain"
+            priority
+          />
+        </div>
 
         <input
           type="text"

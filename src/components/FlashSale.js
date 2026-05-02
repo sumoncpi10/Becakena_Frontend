@@ -17,7 +17,7 @@ export default function FlashSale({ products = [] }) {
 
   const formatTime = (sec) => {
     const h = String(Math.floor(sec / 3600)).padStart(2, "0");
-    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, "0");
+    const m = String(Math.floor(sec / 60) % 60).padStart(2, "0");
     const s = String(sec % 60).padStart(2, "0");
     return `${h}:${m}:${s}`;
   };
@@ -36,30 +36,37 @@ export default function FlashSale({ products = [] }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="bg-black text-white px-3 py-1 rounded">
+
+          <div className="bg-black text-white px-3 py-1 rounded text-sm">
             Ends in: {formatTime(time)}
           </div>
 
-          <button className="text-orange-500 font-semibold">
+          <button className="text-orange-500 font-semibold hover:underline">
             SHOP ALL PRODUCTS
           </button>
+
         </div>
       </div>
 
-      {/* PRODUCTS STRIP */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {products.map((p) => {
+      {/* PRODUCTS STRIP (5 ITEMS ONLY) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+
+        {(products || []).slice(0, 5).map((p) => {
           const discount =
             p.oldPrice && p.price
               ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100)
               : 0;
 
           return (
-            <div key={p._id} className="border rounded p-2 hover:shadow">
+            <div
+              key={p._id}
+              className="rounded p-2 hover:shadow-sm transition bg-white"
+            >
+
               <ProductCard product={p} />
 
-              {/* PRICE BLOCK */}
-              <div className="mt-2">
+              {/* PRICE */}
+              {/* <div className="mt-2">
                 <p className="text-orange-500 font-bold">
                   ৳ {p.price}
                 </p>
@@ -77,12 +84,13 @@ export default function FlashSale({ products = [] }) {
                     )}
                   </div>
                 )}
-              </div>
+              </div> */}
+
             </div>
           );
         })}
-      </div>
 
+      </div>
     </div>
   );
 }

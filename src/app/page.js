@@ -6,6 +6,7 @@ import ProductCard from "../components/ProductCard";
 import Sidebar from "../components/Sidebar";
 import FlashSale from "../components/FlashSale";
 
+
 export default function Home() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,14 +51,14 @@ export default function Home() {
     : products;
 
   // 🔥 FLASH SALE = FIRST 6 PRODUCTS (SAFE)
-  const flashSaleProducts = filteredProducts.slice(0, 6);
+  const flashSaleProducts = filteredProducts.slice(0, 5);
 
   const visibleFlashProducts = showAllFlash
     ? flashSaleProducts
-    : flashSaleProducts.slice(0, 6);
+    : flashSaleProducts.slice(0, 5);
 
   // 🛍 JUST FOR YOU
-  const justForYouProducts = filteredProducts.slice(6);
+  const justForYouProducts = filteredProducts.slice(5);
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -75,7 +76,7 @@ export default function Home() {
           {/* HERO */}
           <div className="rounded overflow-hidden shadow">
             <img
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQNrM1b9TH2fYm4jD3XdEnw2axewYjuXXB1KP-NN1CYWGx5JDK9gRYqeyHBpGn1Smr5XXrFen0GckfRKLD7j7vhgvr9LC3wGbKc5JD_Pg&s=10"
+              src="https://img.lazcdn.com/us/domino/11fd9771-5231-41d0-ba11-247ba77a7dbb_BD-1976-688.jpg_2200x2200q80.jpg_.avif"
               className="w-full h-40 md:h-72 object-cover"
             />
           </div>
